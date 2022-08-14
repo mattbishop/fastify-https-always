@@ -1,0 +1,41 @@
+{
+  "name": "fastify-https-always",
+  "version": "1.0.0",
+  "description": "A fastify plugin to redirect http requests to https.",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "ts-node test/test.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mattbishop/fastify-https-always.git"
+  },
+  "keywords": [
+    "fastify",
+    "fastify-plugin",
+    "https",
+    "TLS",
+    "SSL",
+    "secure"
+  ],
+  "author": "matt@thebishops.org",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mattbishop/fastify-https-always/issues"
+  },
+  "homepage": "https://github.com/mattbishop/fastify-https-always#readme",
+  "dependencies": {
+    "@fastify/error": "3.0.0",
+    "fastify-plugin": "^3.0.1",
+    "undici": "5.8.2"
+  },
+  "devDependencies": {
+    "@types/tape": "^4.13.2",
+    "fastify": "^3.3.0",
+    "tape": "^5.5.3",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.7.4"
+  }
+}
