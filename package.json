@@ -16,6 +16,7 @@
     "fastify",
     "fastify-plugin",
     "https",
+    "redirect",
     "TLS",
     "SSL",
     "secure"
@@ -27,15 +28,15 @@
   },
   "homepage": "https://github.com/mattbishop/fastify-https-always#readme",
   "dependencies": {
-    "@fastify/error": "3.0.0",
-    "fastify-plugin": "^3.0.1",
-    "undici": "5.8.2"
+    "@fastify/error": "^3.0.0",
+    "fastify-plugin": "^3.0.1"
   },
   "devDependencies": {
     "@types/tape": "^4.13.2",
     "fastify": "^3.3.0",
     "tape": "^5.5.3",
     "ts-node": "^10.9.1",
-    "typescript": "^4.7.4"
+    "typescript": "^4.7.4",
+    "undici": "^5.8.2"
   }
 }
