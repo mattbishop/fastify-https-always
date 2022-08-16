@@ -4,10 +4,10 @@ import fp from "fastify-plugin"
 
 
 export interface HttpsAlwaysOptions extends FastifyPluginOptions {
-  productionOnly: boolean
-  enabled:        boolean
-  port:           number
-  redirect:       boolean
+  productionOnly?:  boolean
+  enabled?:         boolean
+  httpsPort?:       number
+  redirect?:        boolean
 }
 
 
@@ -60,7 +60,7 @@ function plugin(fastify:  FastifyInstance,
   const {
     enabled        = true,
     productionOnly = true,
-    port,
+    httpsPort,
     redirect       = true,
   } = opts
 
@@ -69,7 +69,7 @@ function plugin(fastify:  FastifyInstance,
     if (!productionOnly || (productionOnly && inProd)) {
       const ctx: HttpsAlwaysContext = {
         redirect,
-        port: port ? `:${port}` : ""
+        port: httpsPort ? `:${httpsPort}` : ""
       }
       fastify.addHook("onRequest", (q, p, d) => handleRequest(ctx, q, p, d))
     }

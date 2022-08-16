@@ -4,52 +4,63 @@ import {fetch} from "undici"
 import httpsAlwaysPlugin, {HttpsAlwaysOptions} from "../src"
 
 
-
 // self-signed testing cert
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
 
 const URL = "/a/url"
 
-test("default options for both fastify and https-always", async (t) => {
-  process.env.NODE_ENV = "production"
-  const http = Fastify()
+test("Tests for https-always", async (t) => {
   const https = Fastify({
     https: {
       key:  httpsKey,
       cert: httpsCert
     }
   })
-  http.register(httpsAlwaysPlugin)
-  https.register(httpsAlwaysPlugin)
-
-  await http.listen({port: 3080})
   await https.listen({port: 3443})
-  await http.ready()
-  await https.ready()
+
+  process.env.NODE_ENV = "production"
+  const defaultsPort = 3080
+  const httpDefaults = await createHttpServer(defaultsPort, false, {})
 
   t.plan(3)
-  let result = await fetch(`http://localhost:3080${URL}`, {
+  let result = await fetch(`http://localhost:${defaultsPort}${URL}`, {
     redirect: "manual"
-/*
-    headers: {
-      "x-forwarded-proto": "https",
-      "x-forwarded-host": "localhost:3443"
-    }
-*/
   })
+
   t.equal(result.status, 301, "http Permanently Moved")
   t.equal(result.headers.get("location"), `https://localhost${URL}`, "Location is https with no port")
 
-  result = await fetch("https://localhost:3443/")
-  t.equal(result.status, 404, "https Not Found")
+  const trustProxyPort = 3081
+  const httpTrustProxy = await createHttpServer(trustProxyPort, true, {})
 
-  await http.close()
-  await https.close()
+  result = await fetch(`http://localhost:${trustProxyPort}${URL}`, {
+    redirect: "manual",
+    headers: {
+      "x-forwarded-proto":  "https",
+      "x-forwarded-host":   "localhost:3443"
+    }
+  })
+
+  t.equal(result.status, 404, "http with proxy headers Not Found")
+
+  await Promise.all([
+    https.close(),
+    httpDefaults.close(),
+    httpTrustProxy.close()
+  ])
 })
 
-// test trustProxy
 
-// test each default
+async function createHttpServer(port: number, trustProxy: boolean, opts: HttpsAlwaysOptions) {
+  const http = Fastify({
+    trustProxy
+  })
+  http.register(httpsAlwaysPlugin, opts)
+  await http.listen({port})
+  await http.ready()
+
+  return http
+}
 
 
 
@@ -68,8 +79,8 @@ qvCHykPV4ZWc9ilTrS4uTtPRXpi1AkEAzc6e/NGsAecnOJGOrQmwxIUEc2z1DtEM
 Ie4dPuPZ7AnTKUVPhq3zLEuE+XNb9MIzcEhMP3mX2J8ZTh5/QKPRUQJBAM0pYbRu
 GXlfei3LnTUrSAdIRyc06i3zkWygQztYVJyRodS2vRnhwBTL5MtrgWR5ALKuaAul
 TorrsW76xKLvxec=
------END PRIVATE KEY-----
-`
+-----END PRIVATE KEY-----`
+
 const httpsCert = `-----BEGIN CERTIFICATE-----
 MIICtjCCAh8CFET/HQXpZC6h7CyE2IgC/edV8gsZMA0GCSqGSIb3DQEBCwUAMIGY
 MQswCQYDVQQGEwJDQTEZMBcGA1UECAwQQnJpdGlzaCBDb2x1bWJpYTESMBAGA1UE
@@ -86,5 +97,4 @@ ZC1IgTrOw3xS2TjwN/FqL++HAgMBAAEwDQYJKoZIhvcNAQELBQADgYEAu588Rxko
 Y994JB9IowC5AWzFLSTm4fzp80JQc1Bv9IapeFxvBucumYEDmQN/opOEcBmzYqRb
 iCBkNwSchMbPKWdD0oCU0lIA5CC3jGfKPyFUaFS7RDtDE9GjKHf9iexFxPMNBR3a
 kjYW4mD0WOKNcXVIvYfRYtYimf0lyE0Fn9k=
------END CERTIFICATE-----
-`
+-----END CERTIFICATE-----`
