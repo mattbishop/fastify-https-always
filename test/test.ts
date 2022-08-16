@@ -22,16 +22,13 @@ test("Tests for https-always", async (t) => {
   const defaultsPort = 3080
   const httpDefaults = await createHttpServer(defaultsPort, false, {})
 
-  t.plan(3)
-  let result = await fetch(`http://localhost:${defaultsPort}${URL}`, {
-    redirect: "manual"
-  })
-
+  t.plan(9)
+  let result = await fetch(`http://localhost:${defaultsPort}${URL}`, {redirect: "manual"})
   t.equal(result.status, 301, "http Permanently Moved")
   t.equal(result.headers.get("location"), `https://localhost${URL}`, "Location is https with no port")
 
   const trustProxyPort = 3081
-  const httpTrustProxy = await createHttpServer(trustProxyPort, true, {})
+  const httpTrustProxy = await createHttpServer(trustProxyPort, true, {httpsPort: 443})
 
   result = await fetch(`http://localhost:${trustProxyPort}${URL}`, {
     redirect: "manual",
@@ -40,13 +37,36 @@ test("Tests for https-always", async (t) => {
       "x-forwarded-host":   "localhost:3443"
     }
   })
-
   t.equal(result.status, 404, "http with proxy headers Not Found")
+
+  result = await fetch(`http://localhost:${trustProxyPort}${URL}`, {redirect: "manual"})
+  t.equal(result.status, 301, "http Permanently Moved")
+  t.equal(result.headers.get("location"), `https://localhost:443${URL}`, "Location is https with port")
+
+  const disallowPort = 3082
+  const httpDisallow = await createHttpServer(disallowPort, false, {redirect: false})
+  result = await fetch(`http://localhost:${disallowPort}${URL}`, {redirect: "manual"})
+  t.equal(result.status, 403, "http HTTPS Required")
+
+  process.env.NODE_ENV = "development"
+  const devModePort = 3083
+  const httpDevMode = await createHttpServer(devModePort, false, {productionOnly: false})
+  result = await fetch(`http://localhost:${devModePort}${URL}`, {redirect: "manual"})
+  t.equal(result.status, 301, "http dev mode Permanently Moved")
+  t.equal(result.headers.get("location"), `https://localhost${URL}`, "Location is https with no port")
+
+  const prodOnlyPort = 3084
+  const httpProdOnly = await createHttpServer(prodOnlyPort, false, {productionOnly: true})
+  result = await fetch(`http://localhost:${prodOnlyPort}${URL}`, {redirect: "manual"})
+  t.equal(result.status, 404, "http prodOnly Not Found")
 
   await Promise.all([
     https.close(),
     httpDefaults.close(),
-    httpTrustProxy.close()
+    httpTrustProxy.close(),
+    httpDevMode.close(),
+    httpProdOnly.close(),
+    httpDisallow.close()
   ])
 })
 
