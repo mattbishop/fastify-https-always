@@ -4,10 +4,10 @@ import fp from "fastify-plugin"
 
 
 export interface HttpsAlwaysOptions extends FastifyPluginOptions {
-  productionOnly?:  boolean
   enabled?:         boolean
-  httpsPort?:       number
+  productionOnly?:  boolean
   redirect?:        boolean
+  httpsPort?:       number
 }
 
 
@@ -17,7 +17,7 @@ type HttpsAlwaysContext = {
 }
 
 
-const HTTP_REQUIRED = createError(
+const HTTPS_REQUIRED = createError(
   "FST_HTTPS_REQUIRED",
   "Please use HTTPS when communicating with this server.",
   403)
@@ -45,7 +45,7 @@ function handleRequest(ctx:     HttpsAlwaysContext,
       const httpsUrl = `https://${host}${port}${url}`
       reply.redirect(301, httpsUrl)
     } else {
-      next(HTTP_REQUIRED())
+      next(HTTPS_REQUIRED())
       return
     }
   }
@@ -60,13 +60,13 @@ function plugin(fastify:  FastifyInstance,
   const {
     enabled        = true,
     productionOnly = true,
-    httpsPort,
     redirect       = true,
+    httpsPort
   } = opts
 
   if (enabled) {
     const inProd = process.env.NODE_ENV === "production"
-    if (!productionOnly || (productionOnly && inProd)) {
+    if (!productionOnly || inProd) {
       const ctx: HttpsAlwaysContext = {
         redirect,
         port: httpsPort ? `:${httpsPort}` : ""

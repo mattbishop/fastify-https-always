@@ -7,7 +7,7 @@ import httpsAlwaysPlugin, {HttpsAlwaysOptions} from "../src"
 // self-signed testing cert
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
 
-const URL = "/a/url"
+const URL = "/a/url?qp=hi"
 
 test("Tests for https-always", async (t) => {
   const https = Fastify({
