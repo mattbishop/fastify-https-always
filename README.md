@@ -59,5 +59,5 @@ const httpsAlwaysOpts: HttpsAlwaysOptions = {
   httpsPort: 8443
 }
 
-fastify.register(allowPlugin, httpsAlwaysOpts)
+fastify.register(httpsAlwaysPlugin, httpsAlwaysOpts)
 ```
