@@ -46,17 +46,17 @@ Fastify-https-always is written in Typescript and includes type declarations for
 
 ```typescript
 import Fastify from "fastify"
-import httpsAlwaysPlugin, {HttpsAlwaysOptions} from "fastify-https-always"
+import FastifyHttpsAlwaysPlugin, { HttpsAlwaysOptions } from "fastify-https-always"
 
 const fastify = Fastify({
-    trustProxy: true
+  trustProxy: true
 })
 
 // leave out options whose default is suitable
-const httpsAlwaysOpts: HttpsAlwaysOptions = { 
-  productionOnly: false, 
-  redirect: false,
-  httpsPort: 8443
+const httpsAlwaysOpts: HttpsAlwaysOptions = {
+  productionOnly: false,
+  redirect:       false,
+  httpsPort:      8443
 }
 
 fastify.register(httpsAlwaysPlugin, httpsAlwaysOpts)

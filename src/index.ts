@@ -43,7 +43,7 @@ function handleRequest(ctx:     HttpsAlwaysContext,
       const portIdx = hostname.lastIndexOf(":")
       const host = portIdx > 0 ? hostname.substring(0, portIdx) : hostname
       const httpsUrl = `https://${host}${port}${url}`
-      reply.redirect(301, httpsUrl)
+      reply.redirect(httpsUrl, 301)
     } else {
       next(HTTPS_REQUIRED())
       return
@@ -79,7 +79,9 @@ function plugin(fastify:  FastifyInstance,
 }
 
 
-export default fp(plugin, {
+export const FastifyHttpsAlwaysPlugin = fp(plugin, {
   name:     "fastify-https-always",
-  fastify:  ">=3.x"
+  fastify:  ">=5.x"
 })
+
+export default FastifyHttpsAlwaysPlugin

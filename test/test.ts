@@ -1,73 +1,103 @@
-import test from "tape"
-import Fastify from "fastify"
-import {fetch} from "undici"
-import httpsAlwaysPlugin, {HttpsAlwaysOptions} from "../src"
+import Fastify, { FastifyInstance } from "fastify"
+import { strictEqual } from "node:assert/strict"
+import {after, before, test} from "node:test"
+
+import FastifyHttpsAlwaysPlugin, {HttpsAlwaysOptions} from "../lib/index.js"
 
 
 // self-signed testing cert
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
 
 const URL = "/a/url?qp=hi"
+const defaultsPort = 3080
 
-test("Tests for https-always", async (t) => {
-  const https = Fastify({
-    https: {
-      key:  httpsKey,
-      cert: httpsCert
-    }
+let https: FastifyInstance
+let httpDefaults: FastifyInstance
+
+
+test("Tests for https-always", async (ctx) => {
+
+  before(async () => {
+    https = Fastify({
+      https: {
+        key:  httpsKey,
+        cert: httpsCert
+      }
+    })
+    await https.listen({port: 3443})
+    await https.ready()
+
+    process.env.NODE_ENV = "production"
+    httpDefaults = await createHttpServer(defaultsPort, false, {})
   })
-  await https.listen({port: 3443})
 
-  process.env.NODE_ENV = "production"
-  const defaultsPort = 3080
-  const httpDefaults = await createHttpServer(defaultsPort, false, {})
-
-  t.plan(9)
-  let result = await fetch(`http://localhost:${defaultsPort}${URL}`, {redirect: "manual"})
-  t.equal(result.status, 301, "http Permanently Moved")
-  t.equal(result.headers.get("location"), `https://localhost${URL}`, "Location is https with no port")
-
-  const trustProxyPort = 3081
-  const httpTrustProxy = await createHttpServer(trustProxyPort, true, {httpsPort: 443})
-
-  result = await fetch(`http://localhost:${trustProxyPort}${URL}`, {
-    redirect: "manual",
-    headers: {
-      "x-forwarded-proto":  "https",
-      "x-forwarded-host":   "localhost:3443"
-    }
+  after(async () => {
+    await Promise.all([
+      https.close(),
+      httpDefaults.close()
+    ])
   })
-  t.equal(result.status, 404, "http with proxy headers Not Found")
 
-  result = await fetch(`http://localhost:${trustProxyPort}${URL}`, {redirect: "manual"})
-  t.equal(result.status, 301, "http Permanently Moved")
-  t.equal(result.headers.get("location"), `https://localhost:443${URL}`, "Location is https with port")
 
-  const disallowPort = 3082
-  const httpDisallow = await createHttpServer(disallowPort, false, {redirect: false})
-  result = await fetch(`http://localhost:${disallowPort}${URL}`, {redirect: "manual"})
-  t.equal(result.status, 403, "http HTTPS Required")
+  await ctx.test("http", async (t) => {
 
-  process.env.NODE_ENV = "development"
-  const devModePort = 3083
-  const httpDevMode = await createHttpServer(devModePort, false, {productionOnly: false})
-  result = await fetch(`http://localhost:${devModePort}${URL}`, {redirect: "manual"})
-  t.equal(result.status, 301, "http dev mode Permanently Moved")
-  t.equal(result.headers.get("location"), `https://localhost${URL}`, "Location is https with no port")
+    await t.test("http defaults to https", async () => {
+      const result = await fetch(`http://localhost:${defaultsPort}${URL}`, {redirect: "manual"})
+      strictEqual(result.status, 301, "http Permanently Moved")
+      strictEqual(result.headers.get("location"), `https://localhost${URL}`, "Location is https with no port")
+    })
 
-  const prodOnlyPort = 3084
-  const httpProdOnly = await createHttpServer(prodOnlyPort, false, {productionOnly: true})
-  result = await fetch(`http://localhost:${prodOnlyPort}${URL}`, {redirect: "manual"})
-  t.equal(result.status, 404, "http prodOnly Not Found")
+    const trustProxyPort = 3081
+    const httpTrustProxy = await createHttpServer(trustProxyPort, true, {httpsPort: 443})
 
-  await Promise.all([
-    https.close(),
-    httpDefaults.close(),
-    httpTrustProxy.close(),
-    httpDevMode.close(),
-    httpProdOnly.close(),
-    httpDisallow.close()
-  ])
+    await t.test("http with proxy headers", async () => {
+      let result = await fetch(`http://localhost:${trustProxyPort}${URL}`, {
+        redirect: "manual",
+        headers: {
+          "x-forwarded-proto":  "https",
+          "x-forwarded-host":   "localhost:3443"
+        }
+      })
+      strictEqual(result.status, 404, "http with proxy headers Not Found")
+
+      result = await fetch(`http://localhost:${trustProxyPort}${URL}`, {redirect: "manual"})
+      strictEqual(result.status, 301, "http Permanently Moved")
+      strictEqual(result.headers.get("location"), `https://localhost:443${URL}`, "Location is https with port")
+
+      await httpTrustProxy.close()
+    })
+
+    const disallowPort = 3082
+    const httpDisallow = await createHttpServer(disallowPort, false, {redirect: false})
+
+    await t.test("http with redirect disabled", async () => {
+      const result = await fetch(`http://localhost:${disallowPort}${URL}`, {redirect: "manual"})
+      strictEqual(result.status, 403, "http HTTPS Required")
+
+      await httpDisallow.close()
+    })
+
+    process.env.NODE_ENV = "development"
+    const devModePort = 3083
+    const httpDevMode = await createHttpServer(devModePort, false, {productionOnly: false})
+
+    await t.test("http with dev mode", async () => {
+      const result = await fetch(`http://localhost:${devModePort}${URL}`, {redirect: "manual"})
+      strictEqual(result.status, 301, "http dev mode Permanently Moved")
+      strictEqual(result.headers.get("location"), `https://localhost${URL}`, "Location is https with no port")
+
+      await httpDevMode.close()
+    })
+
+    const prodOnlyPort = 3084
+    const httpProdOnly = await createHttpServer(prodOnlyPort, false, {productionOnly: true})
+    await t.test("http with productionOnly set to true", async () => {
+      const result = await fetch(`http://localhost:${prodOnlyPort}${URL}`, {redirect: "manual"})
+      strictEqual(result.status, 404, "http prodOnly Not Found")
+
+      await httpProdOnly.close()
+    })
+  })
 })
 
 
@@ -75,7 +105,7 @@ async function createHttpServer(port: number, trustProxy: boolean, opts: HttpsAl
   const http = Fastify({
     trustProxy
   })
-  http.register(httpsAlwaysPlugin, opts)
+  http.register(FastifyHttpsAlwaysPlugin, opts)
   await http.listen({port})
   await http.ready()
 

@@ -1,10 +1,10 @@
-/// <reference types="node" />
-import { FastifyPluginOptions } from "fastify";
+import { FastifyInstance, FastifyPluginOptions } from "fastify";
 export interface HttpsAlwaysOptions extends FastifyPluginOptions {
     enabled?: boolean;
     productionOnly?: boolean;
     redirect?: boolean;
     httpsPort?: number;
 }
-declare const _default: import("fastify").FastifyPluginCallback<HttpsAlwaysOptions, import("http").Server>;
-export default _default;
+declare function plugin(fastify: FastifyInstance, opts: HttpsAlwaysOptions, next: () => void): void;
+export declare const FastifyHttpsAlwaysPlugin: typeof plugin;
+export default FastifyHttpsAlwaysPlugin;
